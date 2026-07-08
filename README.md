@@ -177,6 +177,23 @@ cd contracts && npm test
 
 ---
 
+## ガスコスト実測（testnet）
+
+実際にミントしたトランザクション（[Token #0](https://testnet-explorer.hsk.xyz/tx/0xcc2b9c6dfe92aa47037d4b0f1ca5a8e438540473bb391987f1a07b6c9073e524)）の実測値。
+HashKey Chain は OP Stack L2 のため、L2実行手数料に加えてL1データ手数料も発生する。
+
+| 項目 | 値 |
+|---|---|
+| gasUsed（L2実行） | 302,091 |
+| L2実行手数料 | 約 0.0000003 HSK |
+| L1データ手数料 | 約 0.00000013 HSK |
+| **合計** | **約 0.00000043 HSK** |
+
+testnetのgasPriceは実運用より意図的に低く設定されているため、この数値は**mainnetでの実コストの目安ではない**。
+mainnetでの実運用コストの検証は今後の課題。
+
+---
+
 ## 既知の設計上の論点（今後のロードマップ）
 
 - **Physical binding問題**: NFTと実物の紐付けは現状、画像ハッシュによる弱い紐付け。
