@@ -1,6 +1,6 @@
 # 引き継ぎメモ — VINTAGE PASSPORT
 
-最終更新: 2026-07-07（このドキュメントを更新したら日付も更新すること）
+最終更新: 2026-07-08（このドキュメントを更新したら日付も更新すること）
 
 このファイルは開発の状態を次のセッション/担当者に引き継ぐためのもの。
 プロダクト仕様は [vintage-passport-design.md](vintage-passport-design.md)、
@@ -17,13 +17,22 @@
 
 ## 現在の状態（ひとことで）
 
-**P0のコードは全て実装・レビュー修正・検証済み。GitHubにプッシュ済み。
-未実施なのは「実クレデンシャルでの testnet デプロイと実機動作確認」のみ。**
+**P0はコード・testnetデプロイ・実機end-to-end確認まで全て完了。GitHubにプッシュ済み。
+残るは「デモの山場（ハッシュ不一致デモ）」の準備とP1のみ。**
 
-- リポジトリ: https://github.com/ragayama123/vintage_passport （`main` ブランチ、1コミット `d166789`）
+- リポジトリ: https://github.com/ragayama123/vintage_passport （`main` ブランチ、1コミット `d166789`。今回分は未コミット）
 - ローカルパス: `/Users/koji/Documents/開発/VINTAGE PASSPORT`
 
-### 動作確認済み（クレデンシャル不要な範囲）
+### クレデンシャル・デプロイ情報（`web/.env.local` に設定済み、値は手元のファイル参照）
+
+| 項目 | 値 |
+|---|---|
+| testnet専用ウォレット（カストディアル） | `0x76B63B4975643026BC6b869A715f04c4EdAdc51D`（viemで新規生成、mainnet資産は一切含まない） |
+| VintagePassportコントラクト | `0xfEDd2490140d7F95430C96596bcd61203D5c26a5`（block `30167675`） |
+| Explorer | https://testnet-explorer.hsk.xyz/address/0xfEDd2490140d7F95430C96596bcd61203D5c26a5 |
+| ANTHROPIC_API_KEY / PINATA_JWT | 設定済み（`web/.env.local`、gitignore対象） |
+
+### 動作確認済み
 
 | 項目 | 結果 |
 |---|---|
@@ -33,51 +42,36 @@
 | `contracts` typecheck | ✅ 通過 |
 | `contracts` Hardhatテスト（`npx hardhat test`） | ✅ 3/3 pass（mint→取得→transfer→再取得、onlyOwner） |
 | HashKey Chain testnet 実接続 | ✅ `eth_chainId` = 133、ブロック生成中、explorer 200 |
+| コントラクトの testnet デプロイ | ✅ 上記アドレスで完了 |
+| `/api/appraise` 実際のClaude API呼び出し | ✅ 実写501画像（全体+タグ）で鑑定成功。「1995年前後（フランス製）確信度55%」、レッドフラグも適切に表示 |
+| `/api/mint` 実IPFS pin + オンチェーンミント | ✅ Token #0 ミント成功、txn `0xcc2b9c...` explorer上でSuccess |
+| 検証ページで「✓改ざんなし」表示 | ✅ on-chainハッシュとrecomputedハッシュ一致を確認 |
+| QRコード → 検証ページ遷移 | ✅ 動作確認済み |
 
-### 未実施（クレデンシャルが必要）
+### 未実施
 
-- [ ] コントラクトの testnet デプロイ
-- [ ] `/api/appraise` の実際のClaude API呼び出し確認（手元の501画像で）
-- [ ] `/api/mint` の実IPFS pin + オンチェーンミント確認
-- [ ] 検証ページで「✓改ざんなし」表示確認
-- [ ] IPFS上のJSONを1文字改変して「✗ハッシュ不一致」になることの確認（デモの山場）
-- [ ] スマホ実機での出品フロー一周（写真撮影→鑑定→ミント）
+- [ ] IPFS上のJSONを1文字改変して「✗ハッシュ不一致」になることの確認（デモの山場、次回最優先）
+- [ ] スマホ実機での出品フロー一周（写真撮影→鑑定→ミント。PCブラウザでは確認済み）
 
 ---
 
 ## 次にやること（優先順）
 
-1. **クレデンシャルを3つ取得**して `web/.env.local` を作る（`web/.env.local.example` をコピー）
-   - `ANTHROPIC_API_KEY` — console.anthropic.com
-   - `PINATA_JWT` — app.pinata.cloud（無料、pinning権限付きAPI Key）
-   - `CUSTODIAL_PRIVATE_KEY` — testnet専用の新規ウォレット。**mainnet資産の入ったウォレットは絶対に使わない**。
-     アドレスに https://faucet.hsk.xyz/faucet で HSK（ガス代）を取得
+1. **デモの山場を準備する**（最優先）
+   - 既にミント済みのToken #0（CID: `QmZ1bMZHidjzAYor1zcGYocDttPnHbuZGmWNEQ718bxun9`）を使うか、新規にもう1件ミントする
+   - Pinataダッシュボード、または検証ページの「IPFSで鑑定書JSONを見る」リンクからCIDを確認
+   - そのJSONを1文字改変したファイルを別途 `pinFileToIPFS` で再pinし、**別のtokenIdか手元検証**でハッシュ不一致（✗）になることを確認しておく
+   - 本番デモではこの「✓ → ✗」の対比を見せる
 
-2. **コントラクトをデプロイ**
-   ```bash
-   cd contracts
-   npm install
-   npm run chainid          # chainId=133 の実接続を再確認（既に確認済みだが念のため）
-   npm test                 # ローカルでコントラクトテスト（既にPASS確認済み）
-   npm run deploy:testnet   # デプロイ実行
-   ```
-   デプロイ完了時に `CONTRACT_ADDRESS` と `DEPLOY_BLOCK` が表示される。両方を `web/.env.local` に設定する
-   （`DEPLOY_BLOCK` は所有履歴取得の走査開始ブロック。設定しないと block 0 から走査して公開RPCに拒否されうる）。
+2. **開発サーバーの状態**: 前回セッションでバックグラウンド起動中（`localhost:3000`）。新しいセッションでは `cd web && npm run dev` で再起動要。
 
-3. **Webアプリを起動して end-to-end 確認**
-   ```bash
-   cd web
-   npm install
-   npm run dev   # http://localhost:3000
-   ```
-   - 画像アップロード → 鑑定 → ミント → 完了画面のQR/リンクから検証ページへ
-   - 「✓改ざんなし」が出ることを確認
-   - **デモの山場**: IPFS上の鑑定書JSON（Pinataダッシュボードまたは検証ページの「IPFSで鑑定書JSONを見る」リンクから確認できるCID）を別途1文字改変して再pinし、その版で検証すると「✗ハッシュ不一致」になることを確認しておく（本番デモで使う）
+3. **今回の変更（`.env.local` 以外）をコミットするか確認**
+   - `git status` で差分確認。`.env.local` はコミットしない（gitignore対象、実際にされているか再確認）。
 
-4. **P0が全部緑になったら P1へ**（設計書の鉄則: P0が動くまでP1に着手しない）
+4. **P0の残タスク完了後 P1へ**（設計書の鉄則: P0が動くまでP1に着手しない）
    - 出品フローUIのスマホ最適化の微調整（既に基本のスマホレイアウトは実装済み）
    - README の最終磨き込み（既に大枠は完成）
-   - デモ用のtokenを前日にミントしておく（testnet不安定リスクの保険）
+   - デモ用のtokenを前日にミントしておく（testnet不安定リスクの保険。Token #0が既にその候補）
 
 ---
 
